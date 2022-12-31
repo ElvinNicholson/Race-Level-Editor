@@ -5,17 +5,91 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:JSON_Level_Editor"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="600" Width="900">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem Header="_New"/>
                 <MenuItem Header="_Open" Click="fileOpen_Click"/>
-                <MenuItem Header="_Save"/>
+                <MenuItem Header="_Save" Click="fileSave_Click"/>
                 <Separator/>
                 <MenuItem Header="_Exit"/>
             </MenuItem>
         </Menu>
-        <TextBox AcceptsReturn="True"/>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Margin="10" Background="GhostWhite" BorderBrush="Gainsboro" BorderThickness="1">
+                <StackPanel Margin="5">
+                    <DockPanel Grid.Column="0" Grid.ColumnSpan="2">
+                        <Label DockPanel.Dock="Left" Content="Race"/>
+                        <Separator Margin="5"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Separator Width="15" Background="Transparent"/>
+                        <Label DockPanel.Dock="Left" Content="Name"/>
+                        <TextBox x:Name="raceName" TextChanged="raceName_TextChanged" VerticalAlignment="Center" HorizontalAlignment="Right" Width="155" Margin="5"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Separator Width="15" Background="Transparent"/>
+                        <Label DockPanel.Dock="Left" Content="Lap"/>
+                        <TextBox x:Name="raceLap" TextChanged="raceLap_TextChanged" PreviewTextInput="raceLap_PreviewTextInput" VerticalAlignment="Center" HorizontalAlignment="Right" Width="155" Margin="5"/>
+                    </DockPanel>
+                    <DockPanel Grid.Column="0" Grid.ColumnSpan="2">
+                        <Label DockPanel.Dock="Left" Content="Checkpoint"/>
+                        <Separator Margin="5"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Separator Width="15" Background="Transparent"/>
+                        <Label DockPanel.Dock="Left" Content="Model"/>
+                        <Button Click="cpModelLoad_Click" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="40" Margin="5">Load</Button>
+                        <Border BorderThickness="1" BorderBrush="Silver" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="110">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <TextBlock x:Name="cpModel" Background="White"/>
+                            </ScrollViewer>
+                        </Border>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Textures"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Separator Width="15" Background="Transparent"/>
+                        <Label DockPanel.Dock="Left" Content="Active"/>
+                        <Button Click="cpActiveLoad_Click" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="40" Margin="5">Load</Button>
+                        <Border BorderThickness="1" BorderBrush="Silver" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="110">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <TextBlock x:Name="cpActive" Background="White"/>
+                            </ScrollViewer>
+                        </Border>
+                    </DockPanel>
+                    <DockPanel>
+                        <Separator Width="15" Background="Transparent"/>
+                        <Label DockPanel.Dock="Left" Content="Next Active"/>
+                        <Button Click="cpNextActiveLoad_Click" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="40" Margin="5">Load</Button>
+                        <Border BorderThickness="1" BorderBrush="Silver" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="110">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <TextBlock x:Name="cpNextActive" Background="White"/>
+                            </ScrollViewer>
+                        </Border>
+                    </DockPanel>
+                    <DockPanel>
+                        <Separator Width="15" Background="Transparent"/>
+                        <Label DockPanel.Dock="Left" Content="Inactive"/>
+                        <Button Click="cpInactiveLoad_Click" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="40" Margin="5">Load</Button>
+                        <Border BorderThickness="1" BorderBrush="Silver" VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="110">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <TextBlock x:Name="cpInactive" Background="White"/>
+                            </ScrollViewer>
+                        </Border>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+        </Grid>
     </DockPanel>
 </Window>
