@@ -6,7 +6,7 @@
         xmlns:helix="http://helix-toolkit.org/wpf"
         xmlns:local="clr-namespace:JSON_Level_Editor"
         mc:Ignorable="d"
-        Title="MainWindow" Height="600" Width="900">
+        Title="MainWindow" Height="650" Width="1300">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
@@ -22,7 +22,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="300"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Margin="10" Background="GhostWhite" BorderBrush="Gainsboro" BorderThickness="1">
@@ -88,17 +88,80 @@
                             </ScrollViewer>
                         </Border>
                     </DockPanel>
-                    <Border BorderThickness="1" BorderBrush="Silver">
-                        <Grid Height="250">
-                            <helix:HelixViewport3D x:Name="viewport">
+                    <DockPanel>
+                        <Label DockPanel.Dock="Left" Content="Preview"/>
+                        <Separator Margin="5"/>
+                    </DockPanel>
+                    <Border BorderThickness="1" BorderBrush="Silver" Width="200" Height="200">
+                        <Grid>
+                            <helix:HelixViewport3D x:Name="preview_viewport">
                                 <helix:GridLinesVisual3D Width="50" Length="50" Thickness="0.1" MinorDistance="5" MajorDistance="10" Fill="LightGray"/>
                                 <helix:DefaultLights/>
                             </helix:HelixViewport3D>
                         </Grid>
                     </Border>
+                    <DockPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Click="cpActivePreview_Click" Grid.Column="0" Margin="5">Active</Button>
+                            <Button Click="cpNextActivePreview_Click" Grid.Column="1" Margin="5">Next Active</Button>
+                            <Button Click="cpInactivePreview_Click" Grid.Column="2" Margin="5">Inactive</Button>
+                        </Grid>
+                    </DockPanel>
                 </StackPanel>
             </Border>
+            <Border Grid.Column="1" BorderThickness="1" BorderBrush="Silver" Margin="10">
+                <Grid>
+                    <helix:HelixViewport3D x:Name="scene_viewport">
+                        <helix:GridLinesVisual3D Width="500" Length="500" Thickness="0.1" MinorDistance="5" MajorDistance="10" Fill="LightGray"/>
+                        <helix:DefaultLights/>
+                    </helix:HelixViewport3D>
+                </Grid>
+            </Border>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
+                <Border Grid.Row="0" Margin="10" Background="GhostWhite" BorderBrush="Gainsboro" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="30"/>
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0">
+                            <Label DockPanel.Dock="Left" Content="Checkpoints"/>
+                            <Separator Margin="5"/>
+                        </DockPanel>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="cpStackPanel" Background="White" Margin="10">
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <Button Click="cpAdd_Click" Margin="5" Width="40" HorizontalAlignment="Left" Grid.Row="2">Add</Button>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Margin="10" Background="GhostWhite" BorderBrush="Gainsboro" BorderThickness="1">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <DockPanel>
+                                <Label DockPanel.Dock="Left" Content="Racing Bots"/>
+                                <Separator Margin="5"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>

@@ -19,6 +19,7 @@ using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 using Path = System.IO.Path;
 using HelixToolkit.Wpf;
+using Newtonsoft.Json;
 
 namespace JSON_Level_Editor
 {
@@ -34,6 +35,9 @@ namespace JSON_Level_Editor
         public MainWindow()
         {
             InitializeComponent();
+
+            scene_viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
+            preview_viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
         }
 
         /// <summary>
@@ -74,13 +78,27 @@ namespace JSON_Level_Editor
 
             // Checkpoint
             cpModel.Text = (string)levelData["modelFile"];
-            Display3D(cpModel.Text);
+            Display3DPreview(cpModel.Text);
 
             cpActive.Text = (string)levelData["activeMaterialFile"];
             setTexture(cpActive.Text);
 
             cpNextActive.Text = (string)levelData["nextActiveMaterialFile"];
             cpInactive.Text = (string)levelData["inactiveMaterialFile"];
+
+            resetSceneViewport();
+            cpStackPanel.Children.Clear();
+
+            foreach (var cpData in levelData["checkpoints"])
+            {
+                List<string> position = new List<string>();
+                foreach (string coordinates in cpData["position"])
+                {
+                    position.Add(coordinates);
+                }
+                createCheckpointElement(position[0], position[1], position[2], (string)cpData["facingAxis"]);
+                Display3DScene(cpModel.Text, position[0], position[1], position[2], (string)cpData["facingAxis"]);
+            }
         }
 
         private void raceName_TextChanged(object sender, TextChangedEventArgs e)
@@ -174,10 +192,23 @@ namespace JSON_Level_Editor
             }
         }
 
+        private void cpActivePreview_Click(object sender, RoutedEventArgs e)
+        {
+            setTexture(cpActive.Text);  
+        }
+        private void cpNextActivePreview_Click(object sender, RoutedEventArgs e)
+        {
+            setTexture(cpNextActive.Text);
+        }
+        private void cpInactivePreview_Click(object sender, RoutedEventArgs e)
+        {
+            setTexture(cpInactive.Text);
+        }
+
         /// <summary>
-        /// Changes 3D Viewport to new model
+        /// Changes preview model to new model
         /// </summary>
-        private void Display3D(string fullModelPath)
+        private void Display3DPreview(string fullModelPath)
         {
             string modelPath = fullModelPath;
             modelPath = modelPath.Remove(0, 12);
@@ -189,8 +220,6 @@ namespace JSON_Level_Editor
 
             try
             {
-                viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
-
                 ModelImporter import = new ModelImporter();
 
                 model = import.Load(modelPath);
@@ -201,19 +230,18 @@ namespace JSON_Level_Editor
             }
 
             model3D.Content = model;
-            RotateTransform3D rotateTransform = new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90));
-            rotateTransform.CenterX = 0;
-            rotateTransform.CenterY = 0;
-            rotateTransform.CenterZ = 0;
-            model3D.Transform = rotateTransform;
+            model3D.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(0, 0, 0));
 
-            if (viewport.Children.Count > 3)
+            if (preview_viewport.Children.Count > 3)
             {
-                viewport.Children.RemoveAt(viewport.Children.Count - 1);
+                preview_viewport.Children.RemoveAt(preview_viewport.Children.Count - 1);
             }
-            viewport.Children.Add(model3D);
+            preview_viewport.Children.Add(model3D);
         }
 
+        /// <summary>
+        /// Changes texture of Preview 3D Model
+        /// </summary>
         private void setTexture(string fullTexturePath)
         {
             string texturePath = fullTexturePath;
@@ -222,13 +250,12 @@ namespace JSON_Level_Editor
             texturePath = directory + texturePath;
 
             Material material = MaterialHelper.CreateImageMaterial(texturePath, 1);
-            ModelVisual3D tempModel = (ModelVisual3D)viewport.Children.Last();
+            ModelVisual3D tempModel = (ModelVisual3D)preview_viewport.Children.Last();
             Model3DGroup tempGroup = (Model3DGroup)tempModel.Content;
-            RotateTransform3D tempTransform = (RotateTransform3D)viewport.Children.Last().Transform;
 
             GeometryModel3D tempGeom = (GeometryModel3D)tempGroup.Children.First();
             tempGeom.Material = material;
-            tempGeom.Transform = tempTransform;
+            tempGeom.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(0, 0, 0));
 
             Model3DGroup newGroup = new Model3DGroup();
             newGroup.Children.Add(tempGeom);
@@ -236,8 +263,225 @@ namespace JSON_Level_Editor
             ModelVisual3D newModel = new ModelVisual3D();
             newModel.Content = newGroup;
 
-            viewport.Children.RemoveAt(viewport.Children.Count - 1);
-            viewport.Children.Add(newModel);
+            preview_viewport.Children.RemoveAt(preview_viewport.Children.Count - 1);
+            preview_viewport.Children.Add(newModel);
+        }
+
+        /// <summary>
+        /// Add a new model to scene viewport
+        /// </summary>
+        /// <param name="fullModelPath">Model Path</param>
+        /// <param name="x">X Coordinate</param>
+        /// <param name="y">Y Coordinate</param>
+        /// <param name="z">Z Coordinate</param>
+        /// <param name="facing">Facing Axis</param>
+        private void Display3DScene(string fullModelPath, string x, string y, string z, string facing)
+        {
+            string modelPath = fullModelPath;
+            modelPath = modelPath.Remove(0, 12);
+            modelPath = modelPath.Replace("/", "\\");
+            modelPath = directory + modelPath;
+
+            ModelVisual3D model3D = new ModelVisual3D();
+            Model3D model = null;
+
+            try
+            {
+                ModelImporter import = new ModelImporter();
+
+                model = import.Load(modelPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Exception Error : " + ex.StackTrace);
+            }
+
+            model3D.Content = model;
+            model3D.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(Int32.Parse(x), -Int32.Parse(z), Int32.Parse(y)));
+
+            if (facing == "x")
+            {
+                Matrix3D matrix = model3D.Content.Transform.Value;
+                matrix.Rotate(new Quaternion(new Vector3D(0, 1, 0), 90));
+                model3D.Content.Transform = new MatrixTransform3D(matrix);
+            }
+
+            scene_viewport.Children.Add(model3D);
+        }
+
+        private void resetSceneViewport()
+        {
+            scene_viewport.Children.Clear();
+
+            GridLinesVisual3D grid = new GridLinesVisual3D();
+            grid.Width = 500;
+            grid.Length = 500;
+            grid.Thickness = 0.1;
+            grid.MinorDistance = 5;
+            grid.MajorDistance = 10;
+            grid.Fill = Brushes.LightGray;
+            scene_viewport.Children.Add(grid);
+
+            DefaultLights light = new DefaultLights();
+            scene_viewport.Children.Add(light);
+        }
+
+        /// <summary>
+        /// Creates a Transform group for model transform
+        /// </summary>
+        /// <param name="rotate">Rotation of model</param>
+        /// <param name="translate">Position of model to origin (0, 0, 0)</param>
+        /// <returns></returns>
+        private Transform3DGroup createTransformGroup(AxisAngleRotation3D rotate, Vector3D translate)
+        {
+            RotateTransform3D rotateTransform = new RotateTransform3D(rotate);
+            rotateTransform.CenterX = 0;
+            rotateTransform.CenterY = 0;
+            rotateTransform.CenterZ = 0;
+
+            TranslateTransform3D translateTransform = new TranslateTransform3D(translate);
+
+            Transform3DGroup transformGroup = new Transform3DGroup();
+            transformGroup.Children.Add(rotateTransform);
+            transformGroup.Children.Add(translateTransform);
+
+            return transformGroup;
+        }
+
+        /// <summary>
+        /// Triggers when Checkpoints > Add is clicked
+        /// </summary>
+        private void cpAdd_Click(object sender, RoutedEventArgs e)
+        {
+            createCheckpointElement("0", "0", "0", "x");
+        }
+
+        /// <summary>
+        /// Creates a new checkpoint element
+        /// </summary>
+        /// <param name="x">X Coordinate</param>
+        /// <param name="y">Y Coordinate</param>
+        /// <param name="z">Z Coordinate</param>
+        /// <param name="facing">Facing Axis</param>
+        private void createCheckpointElement(string x, string y, string z, string facing)
+        {
+            int i = cpStackPanel.Children.Count;
+
+            // Label
+            StackPanel newStackPanel = new StackPanel();
+            Label newLabel = new Label();
+            newLabel.Content = "• Checkpoint " + i.ToString();
+            newStackPanel.Children.Add(newLabel);
+
+            // Coordinates
+            DockPanel newDockPanel = new DockPanel();
+            Grid newGrid = new Grid();
+            newGrid.Height = 30;
+            ColumnDefinition gridCol1 = new ColumnDefinition();
+            gridCol1.Width = GridLength.Auto;
+            ColumnDefinition gridCol2 = new ColumnDefinition();
+            gridCol2.Width = GridLength.Auto;
+            ColumnDefinition gridCol3 = new ColumnDefinition();
+            gridCol3.Width = GridLength.Auto;
+            newGrid.ColumnDefinitions.Add(gridCol1);
+            newGrid.ColumnDefinitions.Add(gridCol2);
+            newGrid.ColumnDefinitions.Add(gridCol3);
+
+            DockPanel newDockPanelX = new DockPanel();
+            Label newLabelX = new Label();
+            TextBox newTextBoxX = new TextBox();
+            newLabelX.Content = "X:";
+            newTextBoxX.Text = x;
+            newTextBoxX.Width = 40;
+            newTextBoxX.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxX.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelX.Children.Add(newLabelX);
+            newDockPanelX.Children.Add(newTextBoxX);
+            Grid.SetColumn(newDockPanelX, 0);
+            newGrid.Children.Add(newDockPanelX);
+
+            DockPanel newDockPanelY = new DockPanel();
+            Label newLabelY = new Label();
+            TextBox newTextBoxY = new TextBox();
+            newLabelY.Content = "Y:";
+            newTextBoxY.Text = y;
+            newTextBoxY.Width = 40;
+            newTextBoxY.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxY.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelY.Children.Add(newLabelY);
+            newDockPanelY.Children.Add(newTextBoxY);
+            Grid.SetColumn(newDockPanelY, 1);
+            newGrid.Children.Add(newDockPanelY);
+
+            DockPanel newDockPanelZ = new DockPanel();
+            Label newLabelZ = new Label();
+            TextBox newTextBoxZ = new TextBox();
+            newLabelZ.Content = "Z:";
+            newTextBoxZ.Text = z;
+            newTextBoxZ.Width = 40;
+            newTextBoxZ.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxZ.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelZ.Children.Add(newLabelZ);
+            newDockPanelZ.Children.Add(newTextBoxZ);
+            Grid.SetColumn(newDockPanelZ, 2);
+            newGrid.Children.Add(newDockPanelZ);
+
+            Separator newSeparator = new Separator();
+            newSeparator.Background = Brushes.Transparent;
+            newSeparator.Width = 15;
+            DockPanel.SetDock(newSeparator, Dock.Left);
+
+            newDockPanel.Children.Add(newSeparator);
+            newDockPanel.Children.Add(newGrid);
+            newStackPanel.Children.Add(newDockPanel);
+
+            // Facing Axis
+            DockPanel newDockPanelFacing = new DockPanel();
+
+            Separator newSeparatorFacing = new Separator();
+            newSeparatorFacing.Background = Brushes.Transparent;
+            newSeparatorFacing.Width = 15;
+            DockPanel.SetDock(newSeparatorFacing, Dock.Left);
+            newDockPanelFacing.Children.Add(newSeparatorFacing);
+
+            Label newLabelFacing = new Label();
+            newLabelFacing.Content = "Facing Axis: ";
+            newDockPanelFacing.Children.Add(newLabelFacing);
+
+            ComboBox newComboBox = new ComboBox();
+            newComboBox.Width = 100;
+            newComboBox.VerticalAlignment = VerticalAlignment.Center;
+            newComboBox.HorizontalAlignment = HorizontalAlignment.Left;
+            ComboBoxItem axisX = new ComboBoxItem();
+            axisX.Content = "X Axis";
+            ComboBoxItem axisZ = new ComboBoxItem();
+            axisZ.Content = "Z Axis";
+            newComboBox.Items.Add(axisX);
+            newComboBox.Items.Add(axisZ);
+
+            if (facing == "x")
+            {
+                newComboBox.SelectedIndex = 0;
+            }
+            else
+            {
+                newComboBox.SelectedIndex = 1;
+            }
+
+            newDockPanelFacing.Children.Add(newComboBox);
+
+            newStackPanel.Children.Add(newDockPanelFacing);
+
+            cpStackPanel.Children.Add(newStackPanel);
+        }
+
+        /// <summary>
+        /// Only allow numbers and "-" sign
+        /// </summary>
+        private void cpCoordinates_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            Regex regex = new Regex("^[-][0-9]+$|^[0-9]*[-]{0,1}[0-9]*$");
+            e.Handled = !regex.IsMatch(e.Text);
         }
     }
 }
