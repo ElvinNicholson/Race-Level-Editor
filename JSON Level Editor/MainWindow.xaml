@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:helix="http://helix-toolkit.org/wpf"
         xmlns:local="clr-namespace:JSON_Level_Editor"
         mc:Ignorable="d"
         Title="MainWindow" Height="600" Width="900">
@@ -87,6 +88,14 @@
                             </ScrollViewer>
                         </Border>
                     </DockPanel>
+                    <Border BorderThickness="1" BorderBrush="Silver">
+                        <Grid Height="250">
+                            <helix:HelixViewport3D x:Name="viewport">
+                                <helix:GridLinesVisual3D Width="50" Length="50" Thickness="0.1" MinorDistance="5" MajorDistance="10" Fill="LightGray"/>
+                                <helix:DefaultLights/>
+                            </helix:HelixViewport3D>
+                        </Grid>
+                    </Border>
                 </StackPanel>
             </Border>
 

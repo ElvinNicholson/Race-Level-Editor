@@ -10,6 +10,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.IO;
@@ -17,6 +18,7 @@ using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 using Path = System.IO.Path;
+using HelixToolkit.Wpf;
 
 namespace JSON_Level_Editor
 {
@@ -72,7 +74,11 @@ namespace JSON_Level_Editor
 
             // Checkpoint
             cpModel.Text = (string)levelData["modelFile"];
+            Display3D(cpModel.Text);
+
             cpActive.Text = (string)levelData["activeMaterialFile"];
+            setTexture(cpActive.Text);
+
             cpNextActive.Text = (string)levelData["nextActiveMaterialFile"];
             cpInactive.Text = (string)levelData["inactiveMaterialFile"];
         }
@@ -114,6 +120,9 @@ namespace JSON_Level_Editor
             }
         }
 
+        /// <summary>
+        /// Triggers when Checkpoint > Textures > Active > Load is clicked
+        /// </summary>
         private void cpActiveLoad_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
@@ -129,6 +138,9 @@ namespace JSON_Level_Editor
             }
         }
 
+        /// <summary>
+        /// Triggers when Checkpoint > Textures > Next Active > Load is clicked
+        /// </summary>
         private void cpNextActiveLoad_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
@@ -144,6 +156,9 @@ namespace JSON_Level_Editor
             }
         }
 
+        /// <summary>
+        /// Triggers when Checkpoint > Textures > Inactive > Load is clicked
+        /// </summary>
         private void cpInactiveLoad_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
@@ -157,6 +172,72 @@ namespace JSON_Level_Editor
                 cpInactive.Text = texture;
                 levelData["inactiveMaterialFile"] = texture;
             }
+        }
+
+        /// <summary>
+        /// Changes 3D Viewport to new model
+        /// </summary>
+        private void Display3D(string fullModelPath)
+        {
+            string modelPath = fullModelPath;
+            modelPath = modelPath.Remove(0, 12);
+            modelPath = modelPath.Replace("/", "\\");
+            modelPath = directory + modelPath;
+
+            ModelVisual3D model3D = new ModelVisual3D();
+            Model3D model = null;
+
+            try
+            {
+                viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
+
+                ModelImporter import = new ModelImporter();
+
+                model = import.Load(modelPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Exception Error : " + ex.StackTrace);
+            }
+
+            model3D.Content = model;
+            RotateTransform3D rotateTransform = new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90));
+            rotateTransform.CenterX = 0;
+            rotateTransform.CenterY = 0;
+            rotateTransform.CenterZ = 0;
+            model3D.Transform = rotateTransform;
+
+            if (viewport.Children.Count > 3)
+            {
+                viewport.Children.RemoveAt(viewport.Children.Count - 1);
+            }
+            viewport.Children.Add(model3D);
+        }
+
+        private void setTexture(string fullTexturePath)
+        {
+            string texturePath = fullTexturePath;
+            texturePath = texturePath.Remove(0, 12);
+            texturePath = texturePath.Replace("/", "\\");
+            texturePath = directory + texturePath;
+
+            Material material = MaterialHelper.CreateImageMaterial(texturePath, 1);
+            ModelVisual3D tempModel = (ModelVisual3D)viewport.Children.Last();
+            Model3DGroup tempGroup = (Model3DGroup)tempModel.Content;
+            RotateTransform3D tempTransform = (RotateTransform3D)viewport.Children.Last().Transform;
+
+            GeometryModel3D tempGeom = (GeometryModel3D)tempGroup.Children.First();
+            tempGeom.Material = material;
+            tempGeom.Transform = tempTransform;
+
+            Model3DGroup newGroup = new Model3DGroup();
+            newGroup.Children.Add(tempGeom);
+
+            ModelVisual3D newModel = new ModelVisual3D();
+            newModel.Content = newGroup;
+
+            viewport.Children.RemoveAt(viewport.Children.Count - 1);
+            viewport.Children.Add(newModel);
         }
     }
 }
