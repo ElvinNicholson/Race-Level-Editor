@@ -21,6 +21,7 @@ using Path = System.IO.Path;
 using HelixToolkit.Wpf;
 using Newtonsoft.Json;
 using Microsoft.VisualBasic;
+using System.Reflection;
 
 namespace JSON_Level_Editor
 {
@@ -54,22 +55,27 @@ namespace JSON_Level_Editor
                 directory = Path.GetDirectoryName(filename);
                 directory = Path.GetDirectoryName(directory);
 
-                readJsonFile();
+                loadLevel();
             }
         }
 
         /// <summary>
         /// Triggers when File > Save is clicked
         /// </summary>
-        private void fileSave_Click(object sender, RoutedEventArgs e) 
+        private void fileSave_Click(object sender, RoutedEventArgs e)
         {
-            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented).Replace("\"[", "[").Replace("]\"", "]")));
+            saveLevel();
+        }
+
+        private void saveLevel()
+        {
+            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented).Replace("\"[", "[").Replace("]\"", "]").Replace("\"REMOVE_THIS\",", "")));
         }
 
         /// <summary>
         /// Reads JSON File
         /// </summary>
-        private void readJsonFile()
+        private void loadLevel()
         {
             levelData = JObject.Parse(File.ReadAllText(filename));
 
@@ -137,6 +143,9 @@ namespace JSON_Level_Editor
                 cpModel.Text = model;
                 levelData["modelFile"] = model;
             }
+
+            saveLevel();
+            loadLevel();
         }
 
         /// <summary>
@@ -221,7 +230,9 @@ namespace JSON_Level_Editor
             Model3D model = import.Load(modelPath);
 
             model3D.Content = model;
-            model3D.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(0, 0, 0));
+            Matrix3D matrix = model3D.Content.Transform.Value;
+            matrix.Rotate(new Quaternion(new Vector3D(1, 0, 0), 90));
+            model3D.Content.Transform = new MatrixTransform3D(matrix);
 
             if (preview_viewport.Children.Count > 3)
             {
@@ -246,7 +257,12 @@ namespace JSON_Level_Editor
 
             GeometryModel3D tempGeom = (GeometryModel3D)tempGroup.Children.First();
             tempGeom.Material = material;
-            tempGeom.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(0, 0, 0));
+
+            RotateTransform3D rotateTransform = new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90));
+            rotateTransform.CenterX = 0;
+            rotateTransform.CenterY = 0;
+            rotateTransform.CenterZ = 0;
+            tempGeom.Transform = rotateTransform;
 
             Model3DGroup newGroup = new Model3DGroup();
             newGroup.Children.Add(tempGeom);
@@ -278,14 +294,12 @@ namespace JSON_Level_Editor
             Model3D model = import.Load(modelPath);
 
             model3D.Content = model;
-            model3D.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(Int32.Parse(x), -Int32.Parse(z), Int32.Parse(y)));
+            Matrix3D matrix = model3D.Content.Transform.Value;
+            matrix.Rotate(new Quaternion(new Vector3D(1, 0, 0), 90));
+            model3D.Content.Transform = new MatrixTransform3D(matrix);
 
-            if (facing == "x")
-            {
-                Matrix3D matrix = model3D.Content.Transform.Value;
-                matrix.Rotate(new Quaternion(new Vector3D(0, 1, 0), 90));
-                model3D.Content.Transform = new MatrixTransform3D(matrix);
-            }
+            TranslateTransform3D translateTransform = new TranslateTransform3D(new Vector3D(Int32.Parse(x), -Int32.Parse(z), Int32.Parse(y)));
+            model3D.Transform = translateTransform;
 
             scene_viewport.Children.Add(model3D);
         }
@@ -308,44 +322,40 @@ namespace JSON_Level_Editor
         }
 
         /// <summary>
-        /// Creates a Transform group for model transform
-        /// </summary>
-        /// <param name="rotate">Rotation of model</param>
-        /// <param name="translate">Position of model to origin (0, 0, 0)</param>
-        /// <returns></returns>
-        private Transform3DGroup createTransformGroup(AxisAngleRotation3D rotate, Vector3D translate)
-        {
-            RotateTransform3D rotateTransform = new RotateTransform3D(rotate);
-            rotateTransform.CenterX = 0;
-            rotateTransform.CenterY = 0;
-            rotateTransform.CenterZ = 0;
-
-            TranslateTransform3D translateTransform = new TranslateTransform3D(translate);
-
-            Transform3DGroup transformGroup = new Transform3DGroup();
-            transformGroup.Children.Add(rotateTransform);
-            transformGroup.Children.Add(translateTransform);
-
-            return transformGroup;
-        }
-
-        /// <summary>
         /// Triggers when Checkpoints > Add is clicked
         /// </summary>
         private void cpAdd_Click(object sender, RoutedEventArgs e)
         {
-            createCheckpointElement("0", "0", "0", "x");
-            Display3DScene(cpModel.Text, "0", "0", "0", "x");
+            //createCheckpointElement("0", "0", "0", "x");
+            //Display3DScene(cpModel.Text, "0", "0", "0", "x");
 
             var tempArray = levelData["checkpoints"];
             string newJson = tempArray.ToString();
             newJson = newJson.Remove(newJson.Length - 1);
             newJson = newJson + ", {\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
-
             levelData["checkpoints"] = newJson;
 
-            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented).Replace("\"[", "[").Replace("]\"", "]")));
-            readJsonFile();
+            saveLevel();
+            loadLevel();
+        }
+
+        /// <summary>
+        /// Called when Checkpoints > Remove is clicked
+        /// </summary>
+        private void cpRemove_Click(object sender, RoutedEventArgs e)
+        {
+            Button button = sender as Button;
+            string name = button.Name;
+            int i = (int)Char.GetNumericValue(name[1]);
+            levelData["checkpoints"][i] = "REMOVE_THIS";
+
+            var tempArray = levelData["checkpoints"];
+            string newJson = tempArray.ToString();
+            newJson = newJson.Replace(",\r\n  \"REMOVE_THIS\"", "").Replace("\"REMOVE_THIS\",", "");
+            levelData["checkpoints"] = newJson;
+
+            saveLevel();
+            loadLevel();
         }
 
         /// <summary>
@@ -359,11 +369,30 @@ namespace JSON_Level_Editor
         {
             int i = cpStackPanel.Children.Count;
 
-            // Label
             StackPanel newStackPanel = new StackPanel();
+            if (i%2 == 0)
+            {
+                newStackPanel.Background = Brushes.WhiteSmoke;
+            }
+
+            // Label
+            DockPanel newDockPanelTop = new DockPanel();
             Label newLabel = new Label();
             newLabel.Content = "• Checkpoint " + i.ToString();
-            newStackPanel.Children.Add(newLabel);
+            DockPanel.SetDock(newLabel, Dock.Left);
+            newDockPanelTop.Children.Add(newLabel);
+
+            // Remove Button
+            Button removeButton = new Button();
+            removeButton.VerticalAlignment = VerticalAlignment.Center;
+            removeButton.Content = "Remove";
+            removeButton.Width = 80;
+            removeButton.Margin = new Thickness(5);
+            removeButton.Name = "R" + i.ToString();
+            removeButton.Click += cpRemove_Click;
+            DockPanel.SetDock(removeButton, Dock.Right);
+            newDockPanelTop.Children.Add(removeButton);
+            newStackPanel.Children.Add(newDockPanelTop);
 
             // Coordinates
             DockPanel newDockPanel = new DockPanel();
@@ -384,8 +413,8 @@ namespace JSON_Level_Editor
             TextBox newTextBoxX = new TextBox();
             newLabelX.Content = "X:";
             newTextBoxX.Name = "X" + i.ToString();
-            newTextBoxX.TextChanged += cpPos_TextChanged;
             newTextBoxX.Text = x;
+            newTextBoxX.TextChanged += cpPos_TextChanged;
             newTextBoxX.Width = 40;
             newTextBoxX.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxX.PreviewTextInput += cpCoordinates_PreviewTextInput;
@@ -399,8 +428,8 @@ namespace JSON_Level_Editor
             TextBox newTextBoxY = new TextBox();
             newLabelY.Content = "Y:";
             newTextBoxY.Name = "Y" + i.ToString();
-            newTextBoxY.TextChanged += cpPos_TextChanged;
             newTextBoxY.Text = y;
+            newTextBoxY.TextChanged += cpPos_TextChanged;
             newTextBoxY.Width = 40;
             newTextBoxY.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxY.PreviewTextInput += cpCoordinates_PreviewTextInput;
@@ -414,8 +443,8 @@ namespace JSON_Level_Editor
             TextBox newTextBoxZ = new TextBox();
             newLabelZ.Content = "Z:";
             newTextBoxZ.Name = "Z" + i.ToString();
-            newTextBoxZ.TextChanged += cpPos_TextChanged;
             newTextBoxZ.Text = z;
+            newTextBoxZ.TextChanged += cpPos_TextChanged;
             newTextBoxZ.Width = 40;
             newTextBoxZ.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxZ.PreviewTextInput += cpCoordinates_PreviewTextInput;
@@ -447,6 +476,7 @@ namespace JSON_Level_Editor
             newDockPanelFacing.Children.Add(newLabelFacing);
 
             ComboBox newComboBox = new ComboBox();
+            newComboBox.Name = "F" + i.ToString();
             newComboBox.Width = 100;
             newComboBox.VerticalAlignment = VerticalAlignment.Center;
             newComboBox.HorizontalAlignment = HorizontalAlignment.Left;
@@ -456,6 +486,7 @@ namespace JSON_Level_Editor
             axisZ.Content = "Z Axis";
             newComboBox.Items.Add(axisX);
             newComboBox.Items.Add(axisZ);
+            newComboBox.SelectionChanged += cpFacing_SelectionChanged;
 
             if (facing == "x")
             {
@@ -480,8 +511,14 @@ namespace JSON_Level_Editor
         {
             TextBox box = sender as TextBox;
             string name = box.Name;
+            int index = (int)Char.GetNumericValue(name[1]);
 
             if (!int.TryParse(box.Text, out _))
+            {
+                return;
+            }
+
+            if (index >= levelData["checkpoints"].Count())
             {
                 return;
             }
@@ -490,85 +527,78 @@ namespace JSON_Level_Editor
             {
                 case 'X':
                     {
-                        int i = 0;
-                        foreach (var cpData in levelData["checkpoints"])
-                        {
-                            if (i == (int)Char.GetNumericValue(name[1]))
-                            {
-                                cpData["position"][0] = box.Text;
-
-                                List<int> position = new List<int>();
-                                foreach (string coordinates in cpData["position"])
-                                {
-                                    position.Add(Int32.Parse(coordinates));
-                                }
-
-                                moveCheckpoint(position[0], position[1], position[2], i);
-                                return;
-                            }
-                            i++;
-                        }
+                        updateCpPos(index, box.Text, 0);
                         return;
                     }
 
                 case 'Y':
                     {
-                        int i = 0;
-                        foreach (var cpData in levelData["checkpoints"])
-                        {
-                            if (i == (int)Char.GetNumericValue(name[1]))
-                            {
-                                cpData["position"][1] = box.Text;
-
-                                List<int> position = new List<int>();
-                                foreach (string coordinates in cpData["position"])
-                                {
-                                    position.Add(Int32.Parse(coordinates));
-                                }
-
-                                moveCheckpoint(position[0], position[1], position[2], i);
-                                return;
-                            }
-                            i++;
-                        }
+                        updateCpPos(index, box.Text, 1);
                         return;
                     }
 
                 case 'Z':
                     {
-                        int i = 0;
-                        foreach (var cpData in levelData["checkpoints"])
-                        {
-                            if (i == (int)Char.GetNumericValue(name[1]))
-                            {
-                                cpData["position"][2] = box.Text;
-
-                                List<int> position = new List<int>();
-                                foreach (string coordinates in cpData["position"])
-                                {
-                                    position.Add(Int32.Parse(coordinates));
-                                }
-
-                                moveCheckpoint(position[0], position[1], position[2], i);
-                                return;
-                            }
-                            i++;
-                        }
+                        updateCpPos(index, box.Text, 2);
                         return;
                     }
             }
         }
 
-        /// <summary>
-        /// Move checkpoint to new position
-        /// </summary>
-        /// <param name="x">X Coordinate</param>
-        /// <param name="y">Y Coordinate</param>
-        /// <param name="z">Z Coordinate</param>
-        /// <param name="index">Index of checkpoint in scene_viewport</param>
-        private void moveCheckpoint(int x, int y, int z, int index)
+        private void updateCpPos(int index, string boxText, int axis)
         {
-            scene_viewport.Children[index + 2].Transform  = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(x, -z, y));
+            var cpData = levelData["checkpoints"][index];
+            cpData["position"][axis] = boxText;
+
+            resetCheckpointPos(index);
+        }
+
+        /// <summary>
+        /// Called when Checkpoints > Facing Axis is changed
+        /// </summary>
+        private void cpFacing_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ComboBox box = sender as ComboBox;
+            string name = box.Name;
+            int i = (int)Char.GetNumericValue(name[1]);
+            var cpData = levelData["checkpoints"][i];
+
+            switch(box.SelectedIndex)
+            { 
+                case 0:
+                    cpData["facingAxis"] = "x";
+                    break;
+
+                case 1:
+                    cpData["facingAxis"] = "z";
+                    break;
+            }
+
+            resetCheckpointPos(i);
+        }
+
+        /// <summary>
+        /// Resets checkpoint position to the one in levelData
+        /// </summary>
+        /// <param name="i">Checkpoint index</param>
+        private void resetCheckpointPos(int i)
+        {
+            var cpData = levelData["checkpoints"][i];
+            List<int> position = new List<int>();
+            foreach (string coordinates in cpData["position"])
+            {
+                position.Add(Int32.Parse(coordinates));
+            }
+
+            Matrix3D matrix = new Matrix3D();
+
+            if ((string)cpData["facingAxis"] == "x")
+            {
+                matrix.Rotate(new Quaternion(new Vector3D(0, 0, 1), 90));
+            }
+
+            matrix.Translate(new Vector3D(position[0], -position[2], position[1]));
+            scene_viewport.Children[i + 2].Transform = new MatrixTransform3D(matrix);
         }
 
         /// <summary>
