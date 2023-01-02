@@ -20,6 +20,7 @@ using System.Text.RegularExpressions;
 using Path = System.IO.Path;
 using HelixToolkit.Wpf;
 using Newtonsoft.Json;
+using Microsoft.VisualBasic;
 
 namespace JSON_Level_Editor
 {
@@ -62,7 +63,7 @@ namespace JSON_Level_Editor
         /// </summary>
         private void fileSave_Click(object sender, RoutedEventArgs e) 
         {
-            File.WriteAllText(filename, levelData.ToString(Newtonsoft.Json.Formatting.Indented));
+            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented)));
         }
 
         /// <summary>
@@ -96,8 +97,8 @@ namespace JSON_Level_Editor
                 {
                     position.Add(coordinates);
                 }
-                createCheckpointElement(position[0], position[1], position[2], (string)cpData["facingAxis"]);
                 Display3DScene(cpModel.Text, position[0], position[1], position[2], (string)cpData["facingAxis"]);
+                createCheckpointElement(position[0], position[1], position[2], (string)cpData["facingAxis"]);
             }
         }
 
@@ -216,18 +217,8 @@ namespace JSON_Level_Editor
             modelPath = directory + modelPath;
 
             ModelVisual3D model3D = new ModelVisual3D();
-            Model3D model = null;
-
-            try
-            {
-                ModelImporter import = new ModelImporter();
-
-                model = import.Load(modelPath);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Exception Error : " + ex.StackTrace);
-            }
+            ModelImporter import = new ModelImporter();
+            Model3D model = import.Load(modelPath);
 
             model3D.Content = model;
             model3D.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(0, 0, 0));
@@ -283,18 +274,8 @@ namespace JSON_Level_Editor
             modelPath = directory + modelPath;
 
             ModelVisual3D model3D = new ModelVisual3D();
-            Model3D model = null;
-
-            try
-            {
-                ModelImporter import = new ModelImporter();
-
-                model = import.Load(modelPath);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Exception Error : " + ex.StackTrace);
-            }
+            ModelImporter import = new ModelImporter();
+            Model3D model = import.Load(modelPath);
 
             model3D.Content = model;
             model3D.Transform = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(Int32.Parse(x), -Int32.Parse(z), Int32.Parse(y)));
@@ -354,6 +335,15 @@ namespace JSON_Level_Editor
         private void cpAdd_Click(object sender, RoutedEventArgs e)
         {
             createCheckpointElement("0", "0", "0", "x");
+            Display3DScene(cpModel.Text, "0", "0", "0", "x");
+
+            var tempArray = levelData["checkpoints"];
+            string newJson = tempArray.ToString();
+            newJson = newJson.Remove(newJson.Length - 1);
+            newJson = @"" + newJson + ", {\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
+            var test = JsonConvert.DeserializeObject(newJson);
+
+            levelData["checkpoints"] = newJson.Trim('"');
         }
 
         /// <summary>
@@ -391,6 +381,8 @@ namespace JSON_Level_Editor
             Label newLabelX = new Label();
             TextBox newTextBoxX = new TextBox();
             newLabelX.Content = "X:";
+            newTextBoxX.Name = "X" + i.ToString();
+            newTextBoxX.TextChanged += cpPos_TextChanged;
             newTextBoxX.Text = x;
             newTextBoxX.Width = 40;
             newTextBoxX.VerticalAlignment = VerticalAlignment.Center;
@@ -404,6 +396,8 @@ namespace JSON_Level_Editor
             Label newLabelY = new Label();
             TextBox newTextBoxY = new TextBox();
             newLabelY.Content = "Y:";
+            newTextBoxY.Name = "Y" + i.ToString();
+            newTextBoxY.TextChanged += cpPos_TextChanged;
             newTextBoxY.Text = y;
             newTextBoxY.Width = 40;
             newTextBoxY.VerticalAlignment = VerticalAlignment.Center;
@@ -417,6 +411,8 @@ namespace JSON_Level_Editor
             Label newLabelZ = new Label();
             TextBox newTextBoxZ = new TextBox();
             newLabelZ.Content = "Z:";
+            newTextBoxZ.Name = "Z" + i.ToString();
+            newTextBoxZ.TextChanged += cpPos_TextChanged;
             newTextBoxZ.Text = z;
             newTextBoxZ.Width = 40;
             newTextBoxZ.VerticalAlignment = VerticalAlignment.Center;
@@ -473,6 +469,104 @@ namespace JSON_Level_Editor
             newStackPanel.Children.Add(newDockPanelFacing);
 
             cpStackPanel.Children.Add(newStackPanel);
+        }
+
+        /// <summary>
+        /// Called when a checkpoint positional value is changed
+        /// </summary>
+        private void cpPos_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox box = sender as TextBox;
+            string name = box.Name;
+
+            if (!int.TryParse(box.Text, out _))
+            {
+                return;
+            }
+
+            switch (name[0])
+            {
+                case 'X':
+                    {
+                        int i = 0;
+                        foreach (var cpData in levelData["checkpoints"])
+                        {
+                            if (i == (int)Char.GetNumericValue(name[1]))
+                            {
+                                cpData["position"][0] = box.Text;
+
+                                List<int> position = new List<int>();
+                                foreach (string coordinates in cpData["position"])
+                                {
+                                    position.Add(Int32.Parse(coordinates));
+                                }
+
+                                moveCheckpoint(position[0], position[1], position[2], i);
+                                return;
+                            }
+                            i++;
+                        }
+                        return;
+                    }
+
+                case 'Y':
+                    {
+                        int i = 0;
+                        foreach (var cpData in levelData["checkpoints"])
+                        {
+                            if (i == (int)Char.GetNumericValue(name[1]))
+                            {
+                                cpData["position"][1] = box.Text;
+
+                                List<int> position = new List<int>();
+                                foreach (string coordinates in cpData["position"])
+                                {
+                                    position.Add(Int32.Parse(coordinates));
+                                }
+
+                                moveCheckpoint(position[0], position[1], position[2], i);
+                                return;
+                            }
+                            i++;
+                        }
+                        return;
+                    }
+
+                case 'Z':
+                    {
+                        int i = 0;
+                        foreach (var cpData in levelData["checkpoints"])
+                        {
+                            if (i == (int)Char.GetNumericValue(name[1]))
+                            {
+                                cpData["position"][2] = box.Text;
+
+                                List<int> position = new List<int>();
+                                foreach (string coordinates in cpData["position"])
+                                {
+                                    position.Add(Int32.Parse(coordinates));
+                                }
+
+                                moveCheckpoint(position[0], position[1], position[2], i);
+                                return;
+                            }
+                            i++;
+                        }
+                        return;
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Move checkpoint to new position
+        /// </summary>
+        /// <param name="x">X Coordinate</param>
+        /// <param name="y">Y Coordinate</param>
+        /// <param name="z">Z Coordinate</param>
+        /// <param name="index">Index of checkpoint in scene_viewport</param>
+        private void moveCheckpoint(int x, int y, int z, int index)
+        {
+            scene_viewport.Children[index + 2].Transform  = createTransformGroup(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 90), new Vector3D(x, -z, y));
         }
 
         /// <summary>
