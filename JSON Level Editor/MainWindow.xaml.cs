@@ -63,7 +63,7 @@ namespace JSON_Level_Editor
         /// </summary>
         private void fileSave_Click(object sender, RoutedEventArgs e) 
         {
-            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented)));
+            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented).Replace("\"[", "[").Replace("]\"", "]")));
         }
 
         /// <summary>
@@ -340,10 +340,12 @@ namespace JSON_Level_Editor
             var tempArray = levelData["checkpoints"];
             string newJson = tempArray.ToString();
             newJson = newJson.Remove(newJson.Length - 1);
-            newJson = @"" + newJson + ", {\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
-            var test = JsonConvert.DeserializeObject(newJson);
+            newJson = newJson + ", {\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
 
-            levelData["checkpoints"] = newJson.Trim('"');
+            levelData["checkpoints"] = newJson;
+
+            File.WriteAllText(filename, Regex.Unescape(levelData.ToString(Formatting.Indented).Replace("\"[", "[").Replace("]\"", "]")));
+            readJsonFile();
         }
 
         /// <summary>
