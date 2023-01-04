@@ -6,7 +6,7 @@
         xmlns:helix="http://helix-toolkit.org/wpf"
         xmlns:local="clr-namespace:JSON_Level_Editor"
         mc:Ignorable="d"
-        Title="MainWindow" Height="650" Width="1300">
+        Title="JSON Level Editor" Height="650" Width="1300">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
@@ -94,7 +94,7 @@
                     </DockPanel>
                     <Border BorderThickness="1" BorderBrush="Silver" Width="200" Height="200">
                         <Grid>
-                            <helix:HelixViewport3D x:Name="preview_viewport">
+                            <helix:HelixViewport3D x:Name="preview_viewport" Background="White">
                                 <helix:GridLinesVisual3D Width="50" Length="50" Thickness="0.1" MinorDistance="5" MajorDistance="10" Fill="LightGray"/>
                                 <helix:DefaultLights/>
                             </helix:HelixViewport3D>
@@ -152,14 +152,25 @@
                 </Border>
 
                 <Border Grid.Row="1" Margin="10" Background="GhostWhite" BorderBrush="Gainsboro" BorderThickness="1">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel>
-                            <DockPanel>
-                                <Label DockPanel.Dock="Left" Content="Racing Bots"/>
-                                <Separator Margin="5"/>
-                            </DockPanel>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="30"/>
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0">
+                            <Label DockPanel.Dock="Left" Content="Racing Bots"/>
+                            <Separator Margin="5"/>
+                        </DockPanel>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="botStackPanel" Background="White" Margin="10">
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <Button Click="botAdd_Click" Margin="5" Width="40" HorizontalAlignment="Left" Grid.Row="2">Add</Button>
+                    </Grid>
                 </Border>
             </Grid>
         </Grid>

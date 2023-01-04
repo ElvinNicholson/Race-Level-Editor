@@ -51,7 +51,7 @@ namespace JSON_Level_Editor
             openFileDialog.Filter = "JSON files (*.json)|*.json";
             if (openFileDialog.ShowDialog() == true) 
             {
-                filename= openFileDialog.FileName;
+                filename = openFileDialog.FileName;
                 directory = Path.GetDirectoryName(filename);
                 directory = Path.GetDirectoryName(directory);
 
@@ -73,7 +73,7 @@ namespace JSON_Level_Editor
         }
 
         /// <summary>
-        /// Reads JSON File
+        /// Load level from JSON file
         /// </summary>
         private void loadLevel()
         {
@@ -103,8 +103,27 @@ namespace JSON_Level_Editor
                 {
                     position.Add(coordinates);
                 }
-                Display3DScene(cpModel.Text, position[0], position[1], position[2], (string)cpData["facingAxis"]);
+
+                int rotation = 0;
+                if ((string)cpData["facingAxis"] == "x")
+                {
+                    rotation = 90;
+                }
+
+                Display3DScene(cpModel.Text, position[0], position[1], position[2], rotation);
                 createCheckpointElement(position[0], position[1], position[2], (string)cpData["facingAxis"]);
+            }
+
+            foreach (var botData in levelData["racingBots"])
+            {
+                List<string> position = new List<string>();
+                foreach (string coordinates in botData["spawnPosition"])
+                {
+                    position.Add(coordinates);
+                }
+
+                createBotElement((string)botData["botName"], position[0], position[1], position[2], (string)botData["spawnDirection"], (string)botData["carModelFile"], (string)botData["carMaterialFile"], (string)botData["minAngle"]);
+                Display3DScene((string)botData["carModelFile"], position[0], position[1], position[2], Int32.Parse((string)botData["spawnDirection"]));
             }
         }
 
@@ -282,12 +301,16 @@ namespace JSON_Level_Editor
         /// <param name="y">Y Coordinate</param>
         /// <param name="z">Z Coordinate</param>
         /// <param name="facing">Facing Axis</param>
-        private void Display3DScene(string fullModelPath, string x, string y, string z, string facing)
+        private void Display3DScene(string fullModelPath, string x, string y, string z, int angle)
         {
             string modelPath = fullModelPath;
             modelPath = modelPath.Remove(0, 12);
             modelPath = modelPath.Replace("/", "\\");
             modelPath = directory + modelPath;
+
+            int _x = Int32.Parse(x);
+            int _y = Int32.Parse(y);
+            int _z = Int32.Parse(z);
 
             ModelVisual3D model3D = new ModelVisual3D();
             ModelImporter import = new ModelImporter();
@@ -298,8 +321,15 @@ namespace JSON_Level_Editor
             matrix.Rotate(new Quaternion(new Vector3D(1, 0, 0), 90));
             model3D.Content.Transform = new MatrixTransform3D(matrix);
 
-            TranslateTransform3D translateTransform = new TranslateTransform3D(new Vector3D(Int32.Parse(x), -Int32.Parse(z), Int32.Parse(y)));
-            model3D.Transform = translateTransform;
+            model3D.Transform = new TranslateTransform3D(new Vector3D(_x, -_z, _y)); ;
+
+            if (angle != 0)
+            {
+                Matrix3D matrix2 = new Matrix3D();
+                matrix2.Rotate(new Quaternion(new Vector3D(0, 0, 1), angle));
+                matrix2.Translate(new Vector3D(_x, -_z, _y));
+                model3D.Transform = new MatrixTransform3D(matrix2);
+            }
 
             scene_viewport.Children.Add(model3D);
         }
@@ -326,9 +356,6 @@ namespace JSON_Level_Editor
         /// </summary>
         private void cpAdd_Click(object sender, RoutedEventArgs e)
         {
-            //createCheckpointElement("0", "0", "0", "x");
-            //Display3DScene(cpModel.Text, "0", "0", "0", "x");
-
             var tempArray = levelData["checkpoints"];
             string newJson = tempArray.ToString();
             newJson = newJson.Remove(newJson.Length - 1);
@@ -390,6 +417,7 @@ namespace JSON_Level_Editor
             removeButton.Margin = new Thickness(5);
             removeButton.Name = "R" + i.ToString();
             removeButton.Click += cpRemove_Click;
+            removeButton.HorizontalAlignment = HorizontalAlignment.Right;
             DockPanel.SetDock(removeButton, Dock.Right);
             newDockPanelTop.Children.Add(removeButton);
             newStackPanel.Children.Add(newDockPanelTop);
@@ -502,6 +530,277 @@ namespace JSON_Level_Editor
             newStackPanel.Children.Add(newDockPanelFacing);
 
             cpStackPanel.Children.Add(newStackPanel);
+        }
+
+        private void botAdd_Click(object sender, RoutedEventArgs e)
+        {
+            createBotElement("Test Bot", "0", "0", "0", "90", "model_path", "texture_path", "10");
+        }
+
+        private void createBotElement(string name, string x, string y, string z, string rotation, string model, string texture, string difficulty)
+        {
+            int i = botStackPanel.Children.Count;
+
+            StackPanel newStackPanel = new StackPanel();
+            if (i % 2 == 0)
+            {
+                newStackPanel.Background = Brushes.WhiteSmoke;
+            }
+
+            DockPanel newDockPanelTop = new DockPanel();
+
+            // Text Box
+            Label newLabel = new Label();
+            newLabel.Content = "• ";
+            DockPanel.SetDock(newLabel, Dock.Left);
+            newDockPanelTop.Children.Add(newLabel);
+
+            TextBox newTextBox = new TextBox();
+            newTextBox.Text = name;
+            newTextBox.Name = "N" + i.ToString();
+            newTextBox.VerticalAlignment = VerticalAlignment.Center;
+            newTextBox.Width = 100;
+            newTextBox.TextChanged += botName_TextChanged;
+            newDockPanelTop.Children.Add(newTextBox);
+
+            // Remove Button
+            Button removeButton = new Button();
+            removeButton.VerticalAlignment = VerticalAlignment.Center;
+            removeButton.Content = "Remove";
+            removeButton.Width = 80;
+            removeButton.Margin = new Thickness(5);
+            removeButton.Name = "B" + i.ToString();
+            removeButton.HorizontalAlignment = HorizontalAlignment.Right;
+            //removeButton.Click += cpRemove_Click;
+            DockPanel.SetDock(removeButton, Dock.Right);
+            newDockPanelTop.Children.Add(removeButton);
+            newStackPanel.Children.Add(newDockPanelTop);
+
+            // Model
+            DockPanel newDockPanelModel = new DockPanel();
+
+            Separator newSeparatorModel = new Separator();
+            newSeparatorModel.Background = Brushes.Transparent;
+            newSeparatorModel.Width = 15;
+            DockPanel.SetDock(newSeparatorModel, Dock.Left);
+            newDockPanelModel.Children.Add(newSeparatorModel);
+
+            Label newLabelModel = new Label();
+            newLabelModel.Content = "Model:";
+            newDockPanelModel.Children.Add(newLabelModel);
+
+            Button newButtonModel = new Button();
+            newButtonModel.Content = "Load";
+            newButtonModel.VerticalAlignment = VerticalAlignment.Center;
+            newButtonModel.HorizontalAlignment = HorizontalAlignment.Right;
+            newButtonModel.Width = 40;
+            newButtonModel.Margin = new Thickness(5);
+            newButtonModel.Name = "O" + i.ToString();
+            newButtonModel.Click += botModelLoad_Click;
+            DockPanel.SetDock(newButtonModel, Dock.Right);
+            newDockPanelModel.Children.Add(newButtonModel);
+
+            Border newBorderModel = new Border();
+            newBorderModel.BorderThickness = new Thickness(1);
+            newBorderModel.BorderBrush = Brushes.Silver;
+            newBorderModel.VerticalAlignment = VerticalAlignment.Center;
+            newBorderModel.HorizontalAlignment = HorizontalAlignment.Center;
+            newBorderModel.Width = 110;
+            DockPanel.SetDock(newBorderModel, Dock.Right);
+            ScrollViewer newScrollViewerModel = new ScrollViewer();
+            newScrollViewerModel.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            newScrollViewerModel.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            TextBlock newTextBlockModel = new TextBlock();
+            newTextBlockModel.Name = "M" + i.ToString();
+            newTextBlockModel.Background = Brushes.White;
+            newTextBlockModel.Text = model;
+            newScrollViewerModel.Content = newTextBlockModel;
+            newBorderModel.Child = newScrollViewerModel;
+            newDockPanelModel.Children.Add(newBorderModel);
+            newStackPanel.Children.Add(newDockPanelModel);
+
+            // Coordinates
+            DockPanel newDockPanel = new DockPanel();
+            Grid newGrid = new Grid();
+            newGrid.Height = 30;
+            ColumnDefinition gridCol1 = new ColumnDefinition();
+            gridCol1.Width = GridLength.Auto;
+            ColumnDefinition gridCol2 = new ColumnDefinition();
+            gridCol2.Width = GridLength.Auto;
+            ColumnDefinition gridCol3 = new ColumnDefinition();
+            gridCol3.Width = GridLength.Auto;
+            newGrid.ColumnDefinitions.Add(gridCol1);
+            newGrid.ColumnDefinitions.Add(gridCol2);
+            newGrid.ColumnDefinitions.Add(gridCol3);
+
+            DockPanel newDockPanelX = new DockPanel();
+            Label newLabelX = new Label();
+            TextBox newTextBoxX = new TextBox();
+            newLabelX.Content = "X:";
+            newTextBoxX.Name = "J" + i.ToString();
+            newTextBoxX.Text = x;
+            //newTextBoxX.TextChanged += cpPos_TextChanged;
+            newTextBoxX.Width = 40;
+            newTextBoxX.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxX.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelX.Children.Add(newLabelX);
+            newDockPanelX.Children.Add(newTextBoxX);
+            Grid.SetColumn(newDockPanelX, 0);
+            newGrid.Children.Add(newDockPanelX);
+
+            DockPanel newDockPanelY = new DockPanel();
+            Label newLabelY = new Label();
+            TextBox newTextBoxY = new TextBox();
+            newLabelY.Content = "Y:";
+            newTextBoxY.Name = "K" + i.ToString();
+            newTextBoxY.Text = y;
+            //newTextBoxY.TextChanged += cpPos_TextChanged;
+            newTextBoxY.Width = 40;
+            newTextBoxY.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxY.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelY.Children.Add(newLabelY);
+            newDockPanelY.Children.Add(newTextBoxY);
+            Grid.SetColumn(newDockPanelY, 1);
+            newGrid.Children.Add(newDockPanelY);
+
+            DockPanel newDockPanelZ = new DockPanel();
+            Label newLabelZ = new Label();
+            TextBox newTextBoxZ = new TextBox();
+            newLabelZ.Content = "Z:";
+            newTextBoxZ.Name = "L" + i.ToString();
+            newTextBoxZ.Text = z;
+            //newTextBoxZ.TextChanged += cpPos_TextChanged;
+            newTextBoxZ.Width = 40;
+            newTextBoxZ.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxZ.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelZ.Children.Add(newLabelZ);
+            newDockPanelZ.Children.Add(newTextBoxZ);
+            Grid.SetColumn(newDockPanelZ, 2);
+            newGrid.Children.Add(newDockPanelZ);
+
+            Separator newSeparator = new Separator();
+            newSeparator.Background = Brushes.Transparent;
+            newSeparator.Width = 15;
+            DockPanel.SetDock(newSeparator, Dock.Left);
+
+            newDockPanel.Children.Add(newSeparator);
+            newDockPanel.Children.Add(newGrid);
+            newStackPanel.Children.Add(newDockPanel);
+
+            // Rotation
+            DockPanel newDockPanelRotation = new DockPanel();
+
+            Separator newSeparatorRotation = new Separator();
+            newSeparatorRotation.Background = Brushes.Transparent;
+            newSeparatorRotation.Width = 15;
+            DockPanel.SetDock(newSeparatorRotation, Dock.Left);
+            newDockPanelRotation.Children.Add(newSeparatorRotation);
+
+            Label newLabelRotation = new Label();
+            TextBox newTextBoxRotation = new TextBox();
+            newLabelRotation.Content = "Rotation: ";
+            newTextBoxRotation.Name = "P" + i.ToString();
+            newTextBoxRotation.Text = rotation;
+            //newTextBoxRotation.TextChanged +=
+            newTextBoxRotation.Width = 40;
+            newTextBoxRotation.VerticalAlignment = VerticalAlignment.Center;
+            newTextBoxRotation.HorizontalAlignment = HorizontalAlignment.Left;
+            newTextBoxRotation.PreviewTextInput += cpCoordinates_PreviewTextInput;
+            newDockPanelRotation.Children.Add(newLabelRotation);
+            newDockPanelRotation.Children.Add(newTextBoxRotation);
+            newStackPanel.Children.Add(newDockPanelRotation);
+
+            // Difficulty
+            DockPanel newDockPanelDiff = new DockPanel();
+
+            Separator newSeparatorDiff = new Separator();
+            newSeparatorDiff.Background = Brushes.Transparent;
+            newSeparatorDiff.Width = 15;
+            DockPanel.SetDock(newSeparatorDiff, Dock.Left);
+            newDockPanelDiff.Children.Add(newSeparatorDiff);
+
+            Label newLabelDiff = new Label();
+            newLabelDiff.Content = "Expertise: ";
+            newDockPanelDiff.Children.Add(newLabelDiff);
+
+            ComboBox newComboBox = new ComboBox();
+            newComboBox.Name = "D" + i.ToString();
+            newComboBox.Width = 100;
+            newComboBox.VerticalAlignment = VerticalAlignment.Center;
+            newComboBox.HorizontalAlignment = HorizontalAlignment.Left;
+            ComboBoxItem beginner = new ComboBoxItem();
+            beginner.Content = "Beginner";
+            ComboBoxItem competent = new ComboBoxItem();
+            competent.Content = "Competent";
+            ComboBoxItem proficient = new ComboBoxItem();
+            proficient.Content = "Proficient";
+            ComboBoxItem expert = new ComboBoxItem();
+            expert.Content = "Expert";
+            newComboBox.Items.Add(beginner);
+            newComboBox.Items.Add(competent);
+            newComboBox.Items.Add(proficient);
+            newComboBox.Items.Add(expert);
+            //newComboBox.SelectionChanged += cpFacing_SelectionChanged;
+
+            switch (difficulty)
+            {
+                case "40":
+                    newComboBox.SelectedIndex = 0;
+                    break;
+
+                case "30":
+                    newComboBox.SelectedIndex = 1;
+                    break;
+
+                case "20":
+                    newComboBox.SelectedIndex = 2;
+                    break;
+
+                case "10":
+                    newComboBox.SelectedIndex = 3;
+                    break;
+            }
+
+            newDockPanelDiff.Children.Add(newComboBox);
+
+            newStackPanel.Children.Add(newDockPanelDiff);
+
+            botStackPanel.Children.Add(newStackPanel);
+
+        }
+
+        private void botModelLoad_Click(object sender, RoutedEventArgs e)
+        {
+            Button button = sender as Button;
+            string name = button.Name;
+            int index = (int)Char.GetNumericValue(name[1]);
+
+            StackPanel stackPanel = (StackPanel)botStackPanel.Children[index];
+            DockPanel dockPanel = (DockPanel)stackPanel.Children[1];
+            Border border = (Border)dockPanel.Children[3];
+            ScrollViewer scrollViewer = (ScrollViewer)border.Child;
+            TextBlock textBlock = (TextBlock)scrollViewer.Content;
+
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Wavefront files (*.obj)|*.obj";
+
+            openFileDialog.InitialDirectory = Path.Combine(directory, "Models");
+            if (openFileDialog.ShowDialog() == true)
+            {
+                string model = openFileDialog.SafeFileName;
+                model = "../Resources/Models/" + model;
+                textBlock.Text = model;
+                levelData["racingBots"][index]["carModelFile"] = model;
+            }
+        }
+
+        private void botName_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            string name = textBox.Name;
+            int index = (int)char.GetNumericValue(name[1]);
+
+            levelData["racingBots"][index]["botName"] = textBox.Text;
         }
 
         /// <summary>
