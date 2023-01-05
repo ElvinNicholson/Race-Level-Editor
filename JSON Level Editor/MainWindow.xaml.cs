@@ -22,6 +22,7 @@ using HelixToolkit.Wpf;
 using Newtonsoft.Json;
 using Microsoft.VisualBasic;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace JSON_Level_Editor
 {
@@ -95,6 +96,7 @@ namespace JSON_Level_Editor
 
             resetSceneViewport();
             cpStackPanel.Children.Clear();
+            botStackPanel.Children.Clear();
 
             foreach (var cpData in levelData["checkpoints"])
             {
@@ -534,7 +536,30 @@ namespace JSON_Level_Editor
 
         private void botAdd_Click(object sender, RoutedEventArgs e)
         {
-            createBotElement("Test Bot", "0", "0", "0", "90", "model_path", "texture_path", "10");
+            var tempArray = levelData["racingBots"];
+            string newJson = tempArray.ToString();
+            newJson = newJson.Remove(newJson.Length - 1);
+            newJson = newJson + ", {\"botName\": \"Bot Name\", \"carModelFile\": \"../Resources/Models/Car3.obj\", \"carMaterialFile\": \"../Resources/Materials/car Texture.png\", \"spawnPosition\": [\"0\", \"0\", \"0\"], \"spawnDirection\": \"0\", \"colorRGBA\": [\"255\", \"255\", \"255\", \"255\"], \"minAngle\": \"40\"}]";
+            levelData["racingBots"] = newJson;
+
+            saveLevel();
+            loadLevel();
+        }
+
+        private void botRemove_Click(object sender, RoutedEventArgs e)
+        {
+            Button button = sender as Button;
+            string name = button.Name;
+            int i = (int)Char.GetNumericValue(name[1]);
+            levelData["racingBots"][i] = "REMOVE_THIS";
+
+            var tempArray = levelData["racingBots"];
+            string newJson = tempArray.ToString();
+            newJson = newJson.Replace(",\r\n  \"REMOVE_THIS\"", "").Replace("\"REMOVE_THIS\",", "");
+            levelData["racingBots"] = newJson;
+
+            saveLevel();
+            loadLevel();
         }
 
         private void createBotElement(string name, string x, string y, string z, string rotation, string model, string texture, string difficulty)
@@ -571,7 +596,7 @@ namespace JSON_Level_Editor
             removeButton.Margin = new Thickness(5);
             removeButton.Name = "B" + i.ToString();
             removeButton.HorizontalAlignment = HorizontalAlignment.Right;
-            //removeButton.Click += cpRemove_Click;
+            removeButton.Click += botRemove_Click;
             DockPanel.SetDock(removeButton, Dock.Right);
             newDockPanelTop.Children.Add(removeButton);
             newStackPanel.Children.Add(newDockPanelTop);
@@ -604,7 +629,7 @@ namespace JSON_Level_Editor
             newBorderModel.BorderThickness = new Thickness(1);
             newBorderModel.BorderBrush = Brushes.Silver;
             newBorderModel.VerticalAlignment = VerticalAlignment.Center;
-            newBorderModel.HorizontalAlignment = HorizontalAlignment.Center;
+            newBorderModel.HorizontalAlignment = HorizontalAlignment.Right;
             newBorderModel.Width = 110;
             DockPanel.SetDock(newBorderModel, Dock.Right);
             ScrollViewer newScrollViewerModel = new ScrollViewer();
@@ -618,6 +643,49 @@ namespace JSON_Level_Editor
             newBorderModel.Child = newScrollViewerModel;
             newDockPanelModel.Children.Add(newBorderModel);
             newStackPanel.Children.Add(newDockPanelModel);
+
+            // Texutre
+            DockPanel newDockPanelTexture = new DockPanel();
+
+            Separator newSeparatorTexture = new Separator();
+            newSeparatorTexture.Background = Brushes.Transparent;
+            newSeparatorTexture.Width = 15;
+            DockPanel.SetDock(newSeparatorTexture, Dock.Left);
+            newDockPanelTexture.Children.Add(newSeparatorTexture);
+
+            Label newLabelTexture = new Label();
+            newLabelTexture.Content = "Texture:";
+            newDockPanelTexture.Children.Add(newLabelTexture);
+
+            Button newButtonTexture = new Button();
+            newButtonTexture.Content = "Load";
+            newButtonTexture.VerticalAlignment = VerticalAlignment.Center;
+            newButtonTexture.HorizontalAlignment = HorizontalAlignment.Right;
+            newButtonTexture.Width = 40;
+            newButtonTexture.Margin = new Thickness(5);
+            newButtonTexture.Name = "O" + i.ToString();
+            newButtonTexture.Click += botTextureLoad_Click;
+            DockPanel.SetDock(newButtonTexture, Dock.Right);
+            newDockPanelTexture.Children.Add(newButtonTexture);
+
+            Border newBorderTexture = new Border();
+            newBorderTexture.BorderThickness = new Thickness(1);
+            newBorderTexture.BorderBrush = Brushes.Silver;
+            newBorderTexture.VerticalAlignment = VerticalAlignment.Center;
+            newBorderTexture.HorizontalAlignment = HorizontalAlignment.Right;
+            newBorderTexture.Width = 110;
+            DockPanel.SetDock(newBorderTexture, Dock.Right);
+            ScrollViewer newScrollViewerTexture = new ScrollViewer();
+            newScrollViewerTexture.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            newScrollViewerTexture.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            TextBlock newTextBlockTexture = new TextBlock();
+            newTextBlockTexture.Name = "T" + i.ToString();
+            newTextBlockTexture.Background = Brushes.White;
+            newTextBlockTexture.Text = texture;
+            newScrollViewerTexture.Content = newTextBlockTexture;
+            newBorderTexture.Child = newScrollViewerTexture;
+            newDockPanelTexture.Children.Add(newBorderTexture);
+            newStackPanel.Children.Add(newDockPanelTexture);
 
             // Coordinates
             DockPanel newDockPanel = new DockPanel();
@@ -639,7 +707,7 @@ namespace JSON_Level_Editor
             newLabelX.Content = "X:";
             newTextBoxX.Name = "J" + i.ToString();
             newTextBoxX.Text = x;
-            //newTextBoxX.TextChanged += cpPos_TextChanged;
+            newTextBoxX.TextChanged += botPos_TextChanged;
             newTextBoxX.Width = 40;
             newTextBoxX.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxX.PreviewTextInput += cpCoordinates_PreviewTextInput;
@@ -654,7 +722,7 @@ namespace JSON_Level_Editor
             newLabelY.Content = "Y:";
             newTextBoxY.Name = "K" + i.ToString();
             newTextBoxY.Text = y;
-            //newTextBoxY.TextChanged += cpPos_TextChanged;
+            newTextBoxY.TextChanged += botPos_TextChanged;
             newTextBoxY.Width = 40;
             newTextBoxY.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxY.PreviewTextInput += cpCoordinates_PreviewTextInput;
@@ -669,7 +737,7 @@ namespace JSON_Level_Editor
             newLabelZ.Content = "Z:";
             newTextBoxZ.Name = "L" + i.ToString();
             newTextBoxZ.Text = z;
-            //newTextBoxZ.TextChanged += cpPos_TextChanged;
+            newTextBoxZ.TextChanged += botPos_TextChanged;
             newTextBoxZ.Width = 40;
             newTextBoxZ.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxZ.PreviewTextInput += cpCoordinates_PreviewTextInput;
@@ -701,7 +769,7 @@ namespace JSON_Level_Editor
             newLabelRotation.Content = "Rotation: ";
             newTextBoxRotation.Name = "P" + i.ToString();
             newTextBoxRotation.Text = rotation;
-            //newTextBoxRotation.TextChanged +=
+            newTextBoxRotation.TextChanged += botRotation_TextChanged;
             newTextBoxRotation.Width = 40;
             newTextBoxRotation.VerticalAlignment = VerticalAlignment.Center;
             newTextBoxRotation.HorizontalAlignment = HorizontalAlignment.Left;
@@ -740,7 +808,6 @@ namespace JSON_Level_Editor
             newComboBox.Items.Add(competent);
             newComboBox.Items.Add(proficient);
             newComboBox.Items.Add(expert);
-            //newComboBox.SelectionChanged += cpFacing_SelectionChanged;
 
             switch (difficulty)
             {
@@ -761,6 +828,7 @@ namespace JSON_Level_Editor
                     break;
             }
 
+            newComboBox.SelectionChanged += botExpertise_SelectionChanged;
             newDockPanelDiff.Children.Add(newComboBox);
 
             newStackPanel.Children.Add(newDockPanelDiff);
@@ -769,6 +837,9 @@ namespace JSON_Level_Editor
 
         }
 
+        /// <summary>
+        /// Called when a Racing Bots > Model > Load is clicked
+        /// </summary>
         private void botModelLoad_Click(object sender, RoutedEventArgs e)
         {
             Button button = sender as Button;
@@ -792,8 +863,42 @@ namespace JSON_Level_Editor
                 textBlock.Text = model;
                 levelData["racingBots"][index]["carModelFile"] = model;
             }
+
+            saveLevel();
+            loadLevel();
         }
 
+        /// <summary>
+        /// Called when a Racing Bots > Texture > Load is clicked
+        /// </summary>
+        private void botTextureLoad_Click(object sender, RoutedEventArgs e)
+        {
+            Button button = sender as Button;
+            string name = button.Name;
+            int index = (int)Char.GetNumericValue(name[1]);
+
+            StackPanel stackPanel = (StackPanel)botStackPanel.Children[index];
+            DockPanel dockPanel = (DockPanel)stackPanel.Children[2];
+            Border border = (Border)dockPanel.Children[3];
+            ScrollViewer scrollViewer = (ScrollViewer)border.Child;
+            TextBlock textBlock = (TextBlock)scrollViewer.Content;
+
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Image files (*.png;*.jpeg)|*.png;*.jpeg";
+
+            openFileDialog.InitialDirectory = Path.Combine(directory, "Materials");
+            if (openFileDialog.ShowDialog() == true)
+            {
+                string model = openFileDialog.SafeFileName;
+                model = "../Resources/Materials/" + model;
+                textBlock.Text = model;
+                levelData["racingBots"][index]["carMaterialFile"] = model;
+            }
+        }
+
+        /// <summary>
+        /// Called when a Racing Bots > Name is clicked
+        /// </summary>
         private void botName_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox textBox = sender as TextBox;
@@ -844,12 +949,75 @@ namespace JSON_Level_Editor
             }
         }
 
+        private void botPos_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox box = sender as TextBox;
+            string name = box.Name;
+            int index = (int)Char.GetNumericValue(name[1]);
+
+            if (!int.TryParse(box.Text, out _))
+            {
+                return;
+            }
+
+            if (index >= levelData["racingBots"].Count())
+            {
+                return;
+            }
+
+            switch (name[0])
+            {
+                case 'J':
+                    {
+                        updateBotPos(index, box.Text, 0);
+                        return;
+                    }
+
+                case 'K':
+                    {
+                        updateBotPos(index, box.Text, 1);
+                        return;
+                    }
+
+                case 'L':
+                    {
+                        updateBotPos(index, box.Text, 2);
+                        return;
+                    }
+            }
+        }
+
+        private void botRotation_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox box = sender as TextBox;
+            string name = box.Name;
+            int index = (int)Char.GetNumericValue(name[1]);
+
+            if (!int.TryParse(box.Text, out _))
+            {
+                return;
+            }
+
+            var botData = levelData["racingBots"][index];
+            botData["spawnDirection"] = box.Text;
+
+            resetBotPos(index);
+        }
+
         private void updateCpPos(int index, string boxText, int axis)
         {
             var cpData = levelData["checkpoints"][index];
             cpData["position"][axis] = boxText;
 
             resetCheckpointPos(index);
+        }
+
+        private void updateBotPos(int index, string boxText, int axis)
+        {
+            var botData = levelData["racingBots"][index];
+            botData["spawnPosition"][axis] = boxText;
+
+            resetBotPos(index);
         }
 
         /// <summary>
@@ -870,6 +1038,35 @@ namespace JSON_Level_Editor
 
                 case 1:
                     cpData["facingAxis"] = "z";
+                    break;
+            }
+
+            resetCheckpointPos(i);
+        }
+
+        private void botExpertise_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ComboBox box = sender as ComboBox;
+            string name = box.Name;
+            int i = (int)Char.GetNumericValue(name[1]);
+            var botData = levelData["racingBots"][i];
+
+            switch (box.SelectedIndex)
+            {
+                case 0:
+                    botData["minAngle"] = "40";
+                    break;
+
+                case 1:
+                    botData["minAngle"] = "30";
+                    break;
+
+                case 2:
+                    botData["minAngle"] = "20";
+                    break;
+
+                case 3:
+                    botData["minAngle"] = "10";
                     break;
             }
 
@@ -898,6 +1095,32 @@ namespace JSON_Level_Editor
 
             matrix.Translate(new Vector3D(position[0], -position[2], position[1]));
             scene_viewport.Children[i + 2].Transform = new MatrixTransform3D(matrix);
+        }
+
+        /// <summary>
+        /// Resets bot position to the one in levelData
+        /// </summary>
+        /// <param name="i">Checkpoint index</param>
+        private void resetBotPos(int i)
+        {
+            var botData = levelData["racingBots"][i];
+            List<int> position = new List<int>();
+            foreach (string coordinates in botData["spawnPosition"])
+            {
+                position.Add(Int32.Parse(coordinates));
+            }
+
+            Matrix3D matrix = new Matrix3D();
+            int angle = Int32.Parse((string)botData["spawnDirection"]);
+
+            if (angle != 0)
+            {
+                matrix.Rotate(new Quaternion(new Vector3D(0, 0, 1), angle));
+            }
+
+            matrix.Translate(new Vector3D(position[0], -position[2], position[1]));
+            int cp = cpStackPanel.Children.Count;
+            scene_viewport.Children[i + 2 + cp].Transform = new MatrixTransform3D(matrix);
         }
 
         /// <summary>
