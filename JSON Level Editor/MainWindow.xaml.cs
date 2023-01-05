@@ -1,28 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.IO;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
-using Path = System.IO.Path;
 using HelixToolkit.Wpf;
 using Newtonsoft.Json;
-using Microsoft.VisualBasic;
-using System.Reflection;
-using System.Xml.Linq;
+using Xceed.Wpf.Toolkit;
+using System.Windows.Controls.Primitives;
 
 namespace JSON_Level_Editor
 {
@@ -35,12 +26,39 @@ namespace JSON_Level_Editor
         private string filename;
         private string directory;
 
+        private Popup newPopup;
+
         public MainWindow()
         {
             InitializeComponent();
 
             scene_viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
             preview_viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
+
+            newPopup = new Popup();
+            newPopup.StaysOpen = false;
+            newPopup.Height = 200;
+            newPopup.Width = 300;
+        }
+
+        /// <summary>
+        /// Triggers when File > New is clicked
+        /// </summary>
+        private void fileNew_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "Json file (*.json)|*.json";
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                string json = "{\"raceName\": \"Level Name\", \"numberOfLaps\": \"0\", \"modelFile\": \"../Resources/Models/Gate.obj\", \"inactiveMaterialFile\": \"../Resources/Materials/Red.png\", \"activeMaterialFile\": \"../Resources/Materials/Green.png\", \"nextActiveMaterialFile\": \"../Resources/Materials/Yellow.png\", \"checkpoints\": [], \"racingBots\": []}";
+                File.WriteAllText(saveFileDialog.FileName, json);
+            }
+
+            filename = saveFileDialog.FileName;
+            directory = System.IO.Path.GetDirectoryName(filename);
+            directory = System.IO.Path.GetDirectoryName(directory);
+
+            loadLevel();
         }
 
         /// <summary>
@@ -53,8 +71,8 @@ namespace JSON_Level_Editor
             if (openFileDialog.ShowDialog() == true) 
             {
                 filename = openFileDialog.FileName;
-                directory = Path.GetDirectoryName(filename);
-                directory = Path.GetDirectoryName(directory);
+                directory = System.IO.Path.GetDirectoryName(filename);
+                directory = System.IO.Path.GetDirectoryName(directory);
 
                 loadLevel();
             }
@@ -124,7 +142,8 @@ namespace JSON_Level_Editor
                     position.Add(coordinates);
                 }
 
-                createBotElement((string)botData["botName"], position[0], position[1], position[2], (string)botData["spawnDirection"], (string)botData["carModelFile"], (string)botData["carMaterialFile"], (string)botData["minAngle"]);
+                Color color = (Color)ColorConverter.ConvertFromString((string)botData["color"]);
+                createBotElement((string)botData["botName"], position[0], position[1], position[2], (string)botData["spawnDirection"], (string)botData["carModelFile"], (string)botData["carMaterialFile"], (string)botData["minAngle"], color);
                 Display3DScene((string)botData["carModelFile"], position[0], position[1], position[2], Int32.Parse((string)botData["spawnDirection"]));
             }
         }
@@ -156,7 +175,7 @@ namespace JSON_Level_Editor
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Wavefront files (*.obj)|*.obj";
 
-            openFileDialog.InitialDirectory = Path.Combine(directory, "Models");
+            openFileDialog.InitialDirectory = System.IO.Path.Combine(directory, "Models");
             if (openFileDialog.ShowDialog() == true)
             {
                 string model = openFileDialog.SafeFileName;
@@ -177,7 +196,7 @@ namespace JSON_Level_Editor
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Image files (*.png;*.jpeg)|*.png;*.jpeg";
 
-            openFileDialog.InitialDirectory = Path.Combine(directory, "Materials");
+            openFileDialog.InitialDirectory = System.IO.Path.Combine(directory, "Materials");
             if (openFileDialog.ShowDialog() == true)
             {
                 string texture = openFileDialog.SafeFileName;
@@ -195,7 +214,7 @@ namespace JSON_Level_Editor
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Image files (*.png;*.jpeg)|*.png;*.jpeg";
 
-            openFileDialog.InitialDirectory = Path.Combine(directory, "Materials");
+            openFileDialog.InitialDirectory = System.IO.Path.Combine(directory, "Materials");
             if (openFileDialog.ShowDialog() == true)
             {
                 string texture = openFileDialog.SafeFileName;
@@ -213,7 +232,7 @@ namespace JSON_Level_Editor
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Image files (*.png;*.jpeg)|*.png;*.jpeg";
 
-            openFileDialog.InitialDirectory = Path.Combine(directory, "Materials");
+            openFileDialog.InitialDirectory = System.IO.Path.Combine(directory, "Materials");
             if (openFileDialog.ShowDialog() == true)
             {
                 string texture = openFileDialog.SafeFileName;
@@ -223,14 +242,25 @@ namespace JSON_Level_Editor
             }
         }
 
+        /// <summary>
+        /// Triggers when Race > Preview > Active is clicked
+        /// </summary>
         private void cpActivePreview_Click(object sender, RoutedEventArgs e)
         {
             setTexture(cpActive.Text);  
         }
+
+        /// <summary>
+        /// Triggers when Race > Preview > Next Active is clicked
+        /// </summary>
         private void cpNextActivePreview_Click(object sender, RoutedEventArgs e)
         {
             setTexture(cpNextActive.Text);
         }
+
+        /// <summary>
+        /// Triggers when Race > Preview > Inactive is clicked
+        /// </summary>
         private void cpInactivePreview_Click(object sender, RoutedEventArgs e)
         {
             setTexture(cpInactive.Text);
@@ -336,6 +366,10 @@ namespace JSON_Level_Editor
             scene_viewport.Children.Add(model3D);
         }
 
+
+        /// <summary>
+        /// Rebuilds scene viewport
+        /// </summary>
         private void resetSceneViewport()
         {
             scene_viewport.Children.Clear();
@@ -358,10 +392,20 @@ namespace JSON_Level_Editor
         /// </summary>
         private void cpAdd_Click(object sender, RoutedEventArgs e)
         {
-            var tempArray = levelData["checkpoints"];
-            string newJson = tempArray.ToString();
-            newJson = newJson.Remove(newJson.Length - 1);
-            newJson = newJson + ", {\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
+            string newJson;
+
+            if (levelData["checkpoints"].Count() > 0)
+            {
+                var tempArray = levelData["checkpoints"];
+                newJson = tempArray.ToString();
+                newJson = newJson.Remove(newJson.Length - 1);
+                newJson = newJson + ", {\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
+            }
+            else
+            {
+                newJson = "[{\"position\": [\"0\", \"0\", \"0\"], \"facingAxis\":\"x\"}]";
+            }
+
             levelData["checkpoints"] = newJson;
 
             saveLevel();
@@ -380,7 +424,7 @@ namespace JSON_Level_Editor
 
             var tempArray = levelData["checkpoints"];
             string newJson = tempArray.ToString();
-            newJson = newJson.Replace(",\r\n  \"REMOVE_THIS\"", "").Replace("\"REMOVE_THIS\",", "");
+            newJson = newJson.Replace(",\r\n  \"REMOVE_THIS\"", "").Replace("\"REMOVE_THIS\",", "").Replace("\"REMOVE_THIS\"", "");
             levelData["checkpoints"] = newJson;
 
             saveLevel();
@@ -534,18 +578,35 @@ namespace JSON_Level_Editor
             cpStackPanel.Children.Add(newStackPanel);
         }
 
+        /// <summary>
+        /// Triggers when Racing Bots > Add is clicked
+        /// </summary>
         private void botAdd_Click(object sender, RoutedEventArgs e)
         {
             var tempArray = levelData["racingBots"];
-            string newJson = tempArray.ToString();
-            newJson = newJson.Remove(newJson.Length - 1);
-            newJson = newJson + ", {\"botName\": \"Bot Name\", \"carModelFile\": \"../Resources/Models/Car3.obj\", \"carMaterialFile\": \"../Resources/Materials/car Texture.png\", \"spawnPosition\": [\"0\", \"0\", \"0\"], \"spawnDirection\": \"0\", \"colorRGBA\": [\"255\", \"255\", \"255\", \"255\"], \"minAngle\": \"40\"}]";
+            string newJson;
+
+            if (levelData["racingBots"].Count() > 0)
+            {
+                newJson = tempArray.ToString();
+                newJson = newJson.Remove(newJson.Length - 1);
+                newJson = newJson + ", {\"botName\": \"Bot Name\", \"carModelFile\": \"../Resources/Models/Car3.obj\", \"carMaterialFile\": \"../Resources/Materials/car Texture.png\", \"spawnPosition\": [\"0\", \"0\", \"0\"], \"spawnDirection\": \"0\", \"color\": \"#FFFFFFFF\", \"minAngle\": \"40\"}]";
+            }
+            else
+            {
+                newJson = "[{\"botName\": \"Bot Name\", \"carModelFile\": \"../Resources/Models/Car3.obj\", \"carMaterialFile\": \"../Resources/Materials/car Texture.png\", \"spawnPosition\": [\"0\", \"0\", \"0\"], \"spawnDirection\": \"0\", \"color\": \"#FFFFFFFF\", \"minAngle\": \"40\"}]";
+            }
+
+
             levelData["racingBots"] = newJson;
 
             saveLevel();
             loadLevel();
         }
 
+        /// <summary>
+        /// Triggers when Racing Bots > Remove is clicked
+        /// </summary>
         private void botRemove_Click(object sender, RoutedEventArgs e)
         {
             Button button = sender as Button;
@@ -555,14 +616,17 @@ namespace JSON_Level_Editor
 
             var tempArray = levelData["racingBots"];
             string newJson = tempArray.ToString();
-            newJson = newJson.Replace(",\r\n  \"REMOVE_THIS\"", "").Replace("\"REMOVE_THIS\",", "");
+            newJson = newJson.Replace(",\r\n  \"REMOVE_THIS\"", "").Replace("\"REMOVE_THIS\",", "").Replace("\"REMOVE_THIS\"", "");
             levelData["racingBots"] = newJson;
 
             saveLevel();
             loadLevel();
         }
 
-        private void createBotElement(string name, string x, string y, string z, string rotation, string model, string texture, string difficulty)
+        /// <summary>
+        /// Create a new Racing Bots UI element
+        /// </summary>
+        private void createBotElement(string name, string x, string y, string z, string rotation, string model, string texture, string difficulty, Color color)
         {
             int i = botStackPanel.Children.Count;
 
@@ -778,6 +842,31 @@ namespace JSON_Level_Editor
             newDockPanelRotation.Children.Add(newTextBoxRotation);
             newStackPanel.Children.Add(newDockPanelRotation);
 
+            // Color
+            DockPanel newDockPanelColor = new DockPanel();
+
+            Separator newSeparatorColor = new Separator();
+            newSeparatorColor.Background = Brushes.Transparent;
+            newSeparatorColor.Width = 15;
+            DockPanel.SetDock(newSeparatorColor, Dock.Left);
+            newDockPanelColor.Children.Add(newSeparatorColor);
+
+            Label newLabelColor = new Label();
+            newLabelColor.Content = "Icon Color: ";
+            newDockPanelColor.Children.Add(newLabelColor);
+
+            ColorPicker colorPicker = new ColorPicker();
+            colorPicker.Name = "C" + i.ToString();
+            colorPicker.VerticalAlignment = VerticalAlignment.Center;
+            colorPicker.HorizontalAlignment = HorizontalAlignment.Left;
+            colorPicker.Width = 88;
+            colorPicker.Margin = new Thickness(5);
+            colorPicker.SelectedColor = color;
+            colorPicker.SelectedColorChanged += botColorPicker_SelectedColorChanged;
+            newDockPanelColor.Children.Add(colorPicker);
+            newStackPanel.Children.Add(newDockPanelColor);
+
+
             // Difficulty
             DockPanel newDockPanelDiff = new DockPanel();
 
@@ -835,6 +924,18 @@ namespace JSON_Level_Editor
 
             botStackPanel.Children.Add(newStackPanel);
 
+        }
+
+        /// <summary>
+        /// Triggers when Racing Bots icon color is changed
+        /// </summary>
+        private void botColorPicker_SelectedColorChanged(object sender, RoutedPropertyChangedEventArgs<Color?> e)
+        {
+            ColorPicker colorPicker = sender as ColorPicker;
+            string name = colorPicker.Name;
+            int index = (int)char.GetNumericValue(name[1]);
+
+            levelData["racingBots"][index]["color"] = colorPicker.SelectedColor.ToString();
         }
 
         /// <summary>
@@ -949,6 +1050,9 @@ namespace JSON_Level_Editor
             }
         }
 
+        /// <summary>
+        /// Called when a checkpoint positional value is changed
+        /// </summary>
         private void botPos_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox box = sender as TextBox;
@@ -987,6 +1091,9 @@ namespace JSON_Level_Editor
             }
         }
 
+        /// <summary>
+        /// Called when a checkpoint rotational value is changed
+        /// </summary>
         private void botRotation_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox box = sender as TextBox;
@@ -1004,6 +1111,9 @@ namespace JSON_Level_Editor
             resetBotPos(index);
         }
 
+        /// <summary>
+        /// Writes new checkpoint position to levelData
+        /// </summary>
         private void updateCpPos(int index, string boxText, int axis)
         {
             var cpData = levelData["checkpoints"][index];
@@ -1012,6 +1122,9 @@ namespace JSON_Level_Editor
             resetCheckpointPos(index);
         }
 
+        /// <summary>
+        /// Writes new racing bots position to levelData
+        /// </summary>
         private void updateBotPos(int index, string boxText, int axis)
         {
             var botData = levelData["racingBots"][index];
@@ -1044,6 +1157,9 @@ namespace JSON_Level_Editor
             resetCheckpointPos(i);
         }
 
+        /// <summary>
+        /// calle when Racing Bots > Expertise combo box selection is changed
+        /// </summary>
         private void botExpertise_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             ComboBox box = sender as ComboBox;
@@ -1124,7 +1240,7 @@ namespace JSON_Level_Editor
         }
 
         /// <summary>
-        /// Only allow numbers and "-" sign
+        /// Only allow numbers and "-" (negative) symbol
         /// </summary>
         private void cpCoordinates_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
