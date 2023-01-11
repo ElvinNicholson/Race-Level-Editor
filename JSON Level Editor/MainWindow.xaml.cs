@@ -26,19 +26,12 @@ namespace JSON_Level_Editor
         private string filename;
         private string directory;
 
-        private Popup newPopup;
-
         public MainWindow()
         {
             InitializeComponent();
 
             scene_viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
             preview_viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
-
-            newPopup = new Popup();
-            newPopup.StaysOpen = false;
-            newPopup.Height = 200;
-            newPopup.Width = 300;
         }
 
         /// <summary>
